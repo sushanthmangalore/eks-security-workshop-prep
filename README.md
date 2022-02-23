@@ -72,3 +72,9 @@ aws sts get-caller-identity --query Arn | grep eksworkshop-admin -q && echo "IAM
 ```
 curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 ```
+
+### Update kube config
+
+```
+aws eks update-kubeconfig --region us-east-2 --name eksworkshop-eksctl
+```
