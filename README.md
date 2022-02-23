@@ -84,6 +84,6 @@ aws eks update-kubeconfig --region us-east-2 --name eksworkshop-eksctl
 ```
 kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-operator.yaml
 kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-crs.yaml
-kubectl get daemonset calico-node --namespace=kube-system
+kubectl get daemonset calico-node --namespace=calico-system
 ```
 
