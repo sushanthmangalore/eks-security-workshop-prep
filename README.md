@@ -78,3 +78,12 @@ curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 
 ```
 aws eks update-kubeconfig --region us-east-2 --name eksworkshop-eksctl
 ```
+
+### Install Calico
+
+```
+kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-operator.yaml
+kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-crs.yaml
+kubectl get daemonset calico-node --namespace=kube-system
+```
+
