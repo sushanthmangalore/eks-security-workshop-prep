@@ -89,6 +89,7 @@ kubectl get daemonset calico-node --namespace=calico-system
 
 ### Karpenter install
 
+```
 export CLUSTER_NAME=$(eksctl get clusters -o json | jq -r '.[0].Name')
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
@@ -101,3 +102,4 @@ curl -fsSL https://karpenter.sh/"${KARPENTER_VERSION}"/getting-started/getting-s
   --template-file ${TEMPOUT} \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides ClusterName=${CLUSTER_NAME}
+```
