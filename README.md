@@ -87,3 +87,17 @@ kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master
 kubectl get daemonset calico-node --namespace=calico-system
 ```
 
+### Karpenter install
+
+export CLUSTER_NAME=$(eksctl get clusters -o json | jq -r '.[0].Name')
+export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+
+export KARPENTER_VERSION=v0.7.2
+TEMPOUT=$(mktemp)
+curl -fsSL https://karpenter.sh/"${KARPENTER_VERSION}"/getting-started/getting-started-with-eksctl/cloudformation.yaml > $TEMPOUT \
+&& aws cloudformation deploy \
+  --stack-name Karpenter-${CLUSTER_NAME} \
+  --template-file ${TEMPOUT} \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides ClusterName=${CLUSTER_NAME}
