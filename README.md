@@ -1,6 +1,41 @@
 # eks-security-workshop-prep
 CLI commands to run before EKS Security workshop on eksworkshop.com
 
+### Increase disk size
+
+```
+pip3 install --user --upgrade boto3
+export instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+python -c "import boto3
+import os
+from botocore.exceptions import ClientError 
+ec2 = boto3.client('ec2')
+volume_info = ec2.describe_volumes(
+    Filters=[
+        {
+            'Name': 'attachment.instance-id',
+            'Values': [
+                os.getenv('instance_id')
+            ]
+        }
+    ]
+)
+volume_id = volume_info['Volumes'][0]['VolumeId']
+try:
+    resize = ec2.modify_volume(    
+            VolumeId=volume_id,    
+            Size=30
+    )
+    print(resize)
+except ClientError as e:
+    if e.response['Error']['Code'] == 'InvalidParameterValue':
+        print('ERROR MESSAGE: {}'.format(e))"
+if [ $? -eq 0 ]; then
+    sudo reboot
+fi
+```
+
+
 ### Install kubectl
 
 ```
@@ -79,27 +114,37 @@ curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 
 aws eks update-kubeconfig --region us-east-2 --name eksworkshop-eksctl
 ```
 
-### Install Calico
-
+### Create Cloud Map Namespace and services
 ```
-kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-operator.yaml
-kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/master/calico-crs.yaml
-kubectl get daemonset calico-node --namespace=calico-system
-```
+OPERATION_ID=$(aws servicediscovery create-private-dns-namespace \
+    --name prodcatalog-ns.svc1.cluster.local \
+    --description 'App Mesh Workshop private DNS namespace' \
+    --vpc vpc-xxxxxx | \
+  jq -r ' .OperationId ')
 
-### Karpenter install
+NAMESPACE=$(aws servicediscovery list-namespaces | \
+  jq -r ' .Namespaces[] |
+    select ( .Properties.HttpProperties.HttpName == "prodcatalog-ns.svc1.cluster.local" ) | .Id ');
 
-```
-export CLUSTER_NAME=$(eksctl get clusters -o json | jq -r '.[0].Name')
-export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
-export KARPENTER_VERSION=v0.7.2
-TEMPOUT=$(mktemp)
-curl -fsSL https://karpenter.sh/"${KARPENTER_VERSION}"/getting-started/getting-started-with-eksctl/cloudformation.yaml > $TEMPOUT \
-&& aws cloudformation deploy \
-  --stack-name Karpenter-${CLUSTER_NAME} \
-  --template-file ${TEMPOUT} \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides ClusterName=${CLUSTER_NAME}
+aws servicediscovery create-service \
+  --name frontend-node \
+  --description 'Discovery service for the Frontend service' \
+  --namespace-id $NAMESPACE \
+  --dns-config 'RoutingPolicy=MULTIVALUE,DnsRecords=[{Type=A,TTL=300}]' \
+  --health-check-custom-config FailureThreshold=1
+
+aws servicediscovery create-service \
+  --name prodcatalog \
+  --description 'Discovery service for the Prod Catalog service' \
+  --namespace-id $NAMESPACE \
+  --dns-config 'RoutingPolicy=MULTIVALUE,DnsRecords=[{Type=A,TTL=300}]' \
+  --health-check-custom-config FailureThreshold=1
+
+aws servicediscovery create-service \
+  --name proddetail \
+  --description 'Discovery service for the Prod Details service' \
+  --namespace-id $NAMESPACE \
+  --dns-config 'RoutingPolicy=MULTIVALUE,DnsRecords=[{Type=A,TTL=300}]' \
+  --health-check-custom-config FailureThreshold=1
 ```
